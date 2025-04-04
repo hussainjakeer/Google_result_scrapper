@@ -68,20 +68,31 @@ def scrap_html(url):
             return {'total_word_count': 0, "total_image_count": 0,
                    "total_heading_count": 0, "total_links_count": 0}
 
-        # Remove script and style elements
-        for script in body(["script", "style"]):
-            script.decompose()
+        # Remove script, style, header, footer, and navigation elements
+        for element in body(["script", "style", "header", "footer", "nav"]):
+            element.decompose()
+
+        # Remove elements with common header/footer/nav classes
+        for element in body.find_all(class_=lambda x: x and any(cls in x.lower() for cls in ['header', 'footer', 'nav', 'navigation', 'menu', 'sidebar'])):
+            element.decompose()
+
+        # Remove elements with common header/footer/nav IDs
+        for element in body.find_all(id=lambda x: x and any(id_name in x.lower() for id_name in ['header', 'footer', 'nav', 'navigation', 'menu', 'sidebar'])):
+            element.decompose()
 
         text = body.get_text(strip=False)
         words = re.findall(r'\w+', text)
         total_word_count = len(words)
 
+        # Only count images in the main content area
         images = body.find_all('img')
         total_image_count = len(images)
 
+        # Only count headings in the main content area
         headings = body.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
         total_heading_count = len(headings)
 
+        # Only count links in the main content area
         links = body.find_all('a')
         total_links_count = len(links)
 
