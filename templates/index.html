@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Analytics Scraper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #FFF;
+            border-bottom-color: #FF3D00;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .url-cell {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        @media (max-width: 768px) {
+            .url-cell {
+                max-width: 150px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-purple-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Web Analytics Scraper</h1>
+            <p class="text-gray-600">Analyze the average content metrics across top search results</p>
+        </div>
+
+        <div class="max-w-6xl mx-auto">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                <div class="relative">
+                    <input type="text" id="searchInput" 
+                           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="Enter your search keyword...">
+                    <button onclick="performSearch()" 
+                            class="absolute right-2 top-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                        Search
+                    </button>
+                </div>
+            </div>
+
+            <div id="loading" class="hidden">
+                <div class="text-center py-8">
+                    <div class="loader mx-auto"></div>
+                    <p class="mt-4 text-gray-600">Analyzing search results...</p>
+                </div>
+            </div>
+
+            <div id="results" class="hidden">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition-transform">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">Average Word Count</h3>
+                        <p id="wordCount" class="text-3xl font-bold text-blue-500">0</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition-transform">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">Average Images</h3>
+                        <p id="imageCount" class="text-3xl font-bold text-green-500">0</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition-transform">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">Average Headings</h3>
+                        <p id="headingCount" class="text-3xl font-bold text-purple-500">0</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition-transform">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">Average Links</h3>
+                        <p id="linkCount" class="text-3xl font-bold text-orange-500">0</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Detailed Results</h2>
+                        <div class="flex space-x-2">
+                            <button onclick="exportToCSV()" 
+                                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Export CSV
+                            </button>
+                            <button onclick="clearResults()" 
+                                    class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Clear Results
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Word Count</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image Count</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Heading Count</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Link Count</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Table rows will be added here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="error" class="hidden">
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <span class="block sm:inline" id="errorMessage"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentResults = []; // Store current results for CSV export
+
+        async function performSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const keyword = searchInput.value.trim();
+            
+            if (!keyword) {
+                showError('Please enter a search keyword');
+                return;
+            }
+
+            // Show loading, hide results and error
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('error').classList.add('hidden');
+
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ keyword }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'An error occurred');
+                }
+
+                // Update average results
+                document.getElementById('wordCount').textContent = data.avg_word_count.toLocaleString();
+                document.getElementById('imageCount').textContent = data.avg_image_count.toLocaleString();
+                document.getElementById('headingCount').textContent = data.avg_heading_count.toLocaleString();
+                document.getElementById('linkCount').textContent = data.avg_links_count.toLocaleString();
+
+                // Update detailed results table
+                const tableBody = document.getElementById('resultsTableBody');
+                tableBody.innerHTML = '';
+                
+                if (data.detailed_results && data.detailed_results.length > 0) {
+                    currentResults = data.detailed_results; // Store results for CSV export
+                    data.detailed_results.forEach((result, index) => {
+                        const row = document.createElement('tr');
+                        row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                        
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap url-cell">
+                                <a href="${result.url}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline">${result.url}</a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${result.word_count.toLocaleString()}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${result.image_count.toLocaleString()}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${result.heading_count.toLocaleString()}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${result.link_count.toLocaleString()}</td>
+                        `;
+                        
+                        tableBody.appendChild(row);
+                    });
+                } else {
+                    currentResults = []; // Clear stored results
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No detailed results available</td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+
+                // Show results
+                document.getElementById('results').classList.remove('hidden');
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        async function exportToCSV() {
+            if (currentResults.length === 0) {
+                showError('No data to export');
+                return;
+            }
+
+            try {
+                const response = await fetch('/export-csv', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to export CSV');
+                }
+
+                // Create a blob from the response
+                const blob = await response.blob();
+                
+                // Create a download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'search_results.csv';
+                document.body.appendChild(a);
+                a.click();
+                
+                // Clean up
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function clearResults() {
+            // Clear the UI
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('searchInput').value = '';
+            currentResults = [];
+            
+            // Clear the session on the server
+            fetch('/', {
+                method: 'GET'
+            }).then(() => {
+                // Refresh the page to ensure clean state
+                window.location.reload();
+            });
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        // Allow Enter key to trigger search
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+    </script>
+</body>
+</html> 
